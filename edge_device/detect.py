@@ -26,10 +26,25 @@ COCO_FALLBACK_CLASSES = {
 def capture_and_detect():
     print("Loading AI model...")
     # Check if a custom trained model exists for exact species detection
-    custom_model_path = os.path.join(os.path.dirname(__file__), 'custom_animal_model.pt')
-    if os.path.exists(custom_model_path):
+    possible_paths = [
+        os.path.join(os.path.dirname(__file__), 'custom_animal_model.pt'),
+        os.path.join(os.path.dirname(__file__), '..', 'backend', 'custom_animal_model.pt'),
+        os.path.join(os.path.dirname(__file__), '..', 'custom_animal_model.pt'),
+        os.path.join(os.getcwd(), 'custom_animal_model.pt'),
+        os.path.join(os.getcwd(), 'backend', 'custom_animal_model.pt'),
+        os.path.join(os.getcwd(), 'edge_device', 'custom_animal_model.pt')
+    ]
+    
+    custom_model_path = None
+    for p in possible_paths:
+        if os.path.exists(p):
+            custom_model_path = os.path.abspath(p)
+            break
+            
+    if custom_model_path:
         print(f"--> Found custom model! Loading exactly trained species from: {custom_model_path}")
         model = YOLO(custom_model_path)
+        print(f"--> Model Classes: {model.names}")
         using_custom_model = True
     else:
         print("--> Using default YOLOv8 COCO model (yolov8n.pt).")

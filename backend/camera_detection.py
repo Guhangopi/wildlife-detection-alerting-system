@@ -65,13 +65,16 @@ def ai_worker_thread(custom_model, standard_model):
 
         # --- PHASE 2: EXPERT DETECTION (Custom Model) ---
         if custom_model:
-            # Increase confidence to 0.8 to be MUCH more strict
-            results_custom = custom_model(frame_to_process, verbose=False, conf=0.8)
+            # Lower confidence threshold to 0.45 to be more sensitive for testing custom models
+            results_custom = custom_model(frame_to_process, verbose=False, conf=0.45)
             for result in results_custom:
                 for box in result.boxes:
                     cls_id = int(box.cls[0])
                     class_name = custom_model.names[cls_id]
+                    confidence = float(box.conf[0])
                     cx1, cy1, cx2, cy2 = map(int, box.xyxy[0])
+                    
+                    print(f"DEBUG: Custom model spotted '{class_name}' with confidence {confidence:.2f}")
                     
                     # ANTI-HUMAN CHECK: Does this leopard overlap with a detected person?
                     is_actually_human = False
@@ -83,9 +86,9 @@ def ai_worker_thread(custom_model, standard_model):
                     
                     if not is_actually_human:
                         current_frame_animal = class_name
-                        new_detections.append({"class_name": f"EXPERT: {class_name}", "box": (cx1, cy1, cx2, cy2)})
+                        new_detections.append({"class_name": f"EXPERT: {class_name} ({confidence:.2f})", "box": (cx1, cy1, cx2, cy2)})
                     else:
-                        print("DEBUG: Ignored Leopard detection (Actually a Human)")
+                        print(f"DEBUG: Ignored '{class_name}' detection because it overlaps with a detected Human (for testing, try standing away from the image!)")
 
         # --- PHASE 3: OTHER WILD ANIMALS ---
         for result in results_std:
@@ -136,10 +139,25 @@ def capture_and_send():
     
     # Load Custom Model (Leopard Expert)
     custom_model = None
-    custom_model_path = os.path.join(os.path.dirname(__file__), 'custom_animal_model.pt')
-    if os.path.exists(custom_model_path):
-        print(f"--> Expert Model Loaded: {custom_model_path}")
+    possible_paths = [
+        os.path.join(os.path.dirname(__file__), 'custom_animal_model.pt'),
+        os.path.join(os.path.dirname(__file__), '..', 'edge_device', 'custom_animal_model.pt'),
+        os.path.join(os.path.dirname(__file__), '..', 'custom_animal_model.pt'),
+        os.path.join(os.getcwd(), 'custom_animal_model.pt'),
+        os.path.join(os.getcwd(), 'backend', 'custom_animal_model.pt'),
+        os.path.join(os.getcwd(), 'edge_device', 'custom_animal_model.pt')
+    ]
+    
+    custom_model_path = None
+    for p in possible_paths:
+        if os.path.exists(p):
+            custom_model_path = os.path.abspath(p)
+            break
+            
+    if custom_model_path:
+        print(f"--> Expert Model Found and Loaded: {custom_model_path}")
         custom_model = YOLO(custom_model_path)
+        print(f"--> Expert Model Classes: {custom_model.names}")
     else:
         print("--> Expert Model NOT FOUND. Using standard mode only.")
     
