@@ -82,9 +82,13 @@ def capture_and_detect():
             last_inference_time = current_time
             # Run inference
             results = model.predict(source=frame, save=False, conf=0.4, verbose=False)
+            if results is None:
+                results = []
             
             for result in results:
                 boxes = result.boxes
+                if boxes is None:
+                    continue
                 for box in boxes:
                     class_id = int(box.cls[0].item())
                     confidence = round(box.conf[0].item(), 2)

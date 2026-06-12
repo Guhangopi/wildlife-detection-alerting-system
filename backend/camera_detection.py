@@ -56,7 +56,11 @@ def ai_worker_thread(custom_model, standard_model):
 
         # --- PHASE 1: HUMAN DETECTION (Standard Model acts as a filter) ---
         results_std = standard_model(frame_to_process, verbose=False, conf=0.4)
+        if results_std is None:
+            results_std = []
         for result in results_std:
+            if result.boxes is None:
+                continue
             for box in result.boxes:
                 cls_id = int(box.cls[0])
                 if cls_id == 0: # Person
@@ -67,7 +71,11 @@ def ai_worker_thread(custom_model, standard_model):
         if custom_model:
             # Lower confidence threshold to 0.45 to be more sensitive for testing custom models
             results_custom = custom_model(frame_to_process, verbose=False, conf=0.45)
+            if results_custom is None:
+                results_custom = []
             for result in results_custom:
+                if result.boxes is None:
+                    continue
                 for box in result.boxes:
                     cls_id = int(box.cls[0])
                     class_name = custom_model.names[cls_id]
@@ -92,6 +100,8 @@ def ai_worker_thread(custom_model, standard_model):
 
         # --- PHASE 3: OTHER WILD ANIMALS ---
         for result in results_std:
+            if result.boxes is None:
+                continue
             for box in result.boxes:
                 cls_id = int(box.cls[0])
                 confidence = float(box.conf[0])

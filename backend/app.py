@@ -48,6 +48,12 @@ class User(db.Model):
     password = db.Column(db.String(100), nullable=False)
     role = db.Column(db.String(20), default='user') # user, admin
 
+    def __init__(self, name, mobile_number, password, role='user'):
+        self.name = name
+        self.mobile_number = mobile_number
+        self.password = password
+        self.role = role
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -65,6 +71,14 @@ class Alert(db.Model):
     distance = db.Column(db.Float)
     alert_level = db.Column(db.String(20), default='Info') # Info, Warning, Emergency
     timestamp = db.Column(db.DateTime, default=get_ist_now)
+
+    def __init__(self, location, description, image_url=None, species=None, distance=None, alert_level='Info'):
+        self.location = location
+        self.description = description
+        self.image_url = image_url
+        self.species = species
+        self.distance = distance
+        self.alert_level = alert_level
 
     def to_dict(self):
         return {
@@ -211,6 +225,8 @@ def update_delete_alert(alert_id):
         db.session.commit()
         return jsonify({"message": "Alert updated successfully", "alert": alert.to_dict()})
 
+    return jsonify({"error": "Method not allowed"}), 405
+
 @app.route('/api/iot/alert', methods=['POST'])
 def handle_iot_alert():
     data = request.json
@@ -338,9 +354,9 @@ def get_hotzones():
     from sqlalchemy import func
     # Group by location and get count
     hotzones_data = db.session.query(
-        Alert.location, 
-        func.count(Alert.id).label('incident_count')
-    ).group_by(Alert.location).order_by(func.count(Alert.id).desc()).limit(10).all()
+        getattr(Alert, 'location'), 
+        func.count(getattr(Alert, 'id')).label('incident_count')
+    ).group_by(getattr(Alert, 'location')).order_by(func.count(getattr(Alert, 'id')).desc()).limit(10).all()
     
     result = [{"location": loc, "incident_count": count} for loc, count in hotzones_data]
     return jsonify(result)
@@ -368,6 +384,8 @@ def handle_user(user_id):
             
         db.session.commit()
         return jsonify({"message": "User updated successfully", "user": user.to_dict()}), 200
+
+    return jsonify({"error": "Method not allowed"}), 405
 
 @app.route('/api/reset-password', methods=['POST'])
 def reset_password():
