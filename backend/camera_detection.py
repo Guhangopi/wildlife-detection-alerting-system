@@ -94,10 +94,15 @@ def ai_worker_thread(custom_model, standard_model):
         for result in results_std:
             for box in result.boxes:
                 cls_id = int(box.cls[0])
-                class_name = standard_model.names[cls_id]
-                WILD_ANIMALS = [20, 21, 22, 23] # Elephant, Bear, Zebra, Giraffe
+                confidence = float(box.conf[0])
+                WILD_ANIMALS = [15, 20, 21, 22, 23] # Cat/Feline (Leopard fallback), Elephant, Bear, Zebra, Giraffe
                 
                 if cls_id in WILD_ANIMALS:
+                    # Critical Fix: Prevent low confidence cat detections triggering Leopard warnings
+                    if cls_id == 15 and confidence < 0.65:
+                        continue
+                        
+                    class_name = COCO_FALLBACK_CLASSES.get(cls_id, standard_model.names[cls_id])
                     if not current_frame_animal:
                         current_frame_animal = class_name
                     x1, y1, x2, y2 = map(int, box.xyxy[0])
@@ -123,7 +128,7 @@ def ai_worker_thread(custom_model, standard_model):
             }
             
             try:
-                response = requests.post(BACKEND_URL, json=payload)
+                response = requests.post(BACKEND_URL, json=payload, timeout=5)
                 if response.status_code == 201:
                     last_alert_time = new_time
             except Exception as e:
@@ -204,7 +209,7 @@ def capture_and_send():
 
         cv2.imshow("WildGuard Animal Detection", frame)
         
-        if cv2.waitKey(1) == ord('q'):
+        if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
     ai_thread_running = False

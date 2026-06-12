@@ -60,7 +60,8 @@ def capture_and_detect():
         print("Error: Could not open webcam.")
         return
 
-    last_detection_time = 0
+    last_inference_time = 0
+    last_alert_time = 0
     COOLDOWN = 10 # Wait 10 seconds before sending another alert to avoid spam
 
     print("--- Starting wildlife detection stream ---")
@@ -77,7 +78,8 @@ def capture_and_detect():
 
         # Process every few seconds
         current_time = time.time()
-        if current_time - last_detection_time > POLL_INTERVAL:
+        if current_time - last_inference_time > POLL_INTERVAL:
+            last_inference_time = current_time
             # Run inference
             results = model.predict(source=frame, save=False, conf=0.4, verbose=False)
             
@@ -139,18 +141,18 @@ def capture_and_detect():
                             "image_data": img_str
                         }
 
-                        if current_time - last_detection_time > COOLDOWN:
+                        if current_time - last_alert_time > COOLDOWN:
                             print(f">>> Sending payload to Cloud Server...")
                             try:
                                 response = requests.post(BACKEND_URL, json=payload, timeout=5)
                                 if response.status_code == 201:
                                     print(">>> Alert successfully transmitted!")
+                                    last_alert_time = time.time()
                                 else:
                                     print(f">>> Backend returned error: {response.text}")
                             except Exception as e:
                                 print(f">>> Communication error: {e}")
                             
-                            last_detection_time = time.time()
                             break # Only send one alert per frame
 
         # Break loop on 'q' press
