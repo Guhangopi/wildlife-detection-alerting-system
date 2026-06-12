@@ -1,12 +1,48 @@
 import React, { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ShieldAlert, User as UserIcon, LogOut, Settings, ChevronDown } from 'lucide-react';
 import EditProfileModal from './EditProfileModal';
+
+const UserDropdown = ({ isProfileOpen, setIsProfileOpen, user, setIsEditModalOpen, handleLogout }) => (
+  <div className="relative">
+    <button 
+      onClick={() => setIsProfileOpen(!isProfileOpen)} 
+      className="flex items-center gap-1.5 bg-nature-50 border border-nature-200 px-3 py-1.5 rounded-full text-nature-700 hover:bg-nature-100 transition-colors shadow-sm"
+    >
+      <UserIcon className="w-4 h-4" />
+      <span className="text-xs font-bold hidden sm:block">{user.name.split(' ')[0]}</span>
+      <span className="text-xs font-bold sm:hidden">Profile</span>
+      <ChevronDown className={`w-3 h-3 transition-transform ${isProfileOpen ? 'rotate-180' : ''}`} />
+    </button>
+    
+    {isProfileOpen && (
+        <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg py-1 border border-gray-100 z-50 animate-in fade-in zoom-in duration-200 origin-top-right">
+            <div className="px-4 py-2 border-b border-gray-50">
+                <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
+                <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+            </div>
+            <button 
+                onClick={() => { setIsEditModalOpen(true); setIsProfileOpen(false); }}
+                className="w-full text-left px-4 py-2 text-sm flex items-center gap-2 text-gray-700 hover:bg-nature-50 hover:text-nature-700 transition-colors"
+            >
+                <Settings className="w-4 h-4" />
+                Edit Profile
+            </button>
+            <button 
+                onClick={handleLogout}
+                className="w-full text-left px-4 py-2 text-sm flex items-center gap-2 text-red-600 hover:bg-red-50 transition-colors"
+            >
+                <LogOut className="w-4 h-4" />
+                Logout
+            </button>
+        </div>
+    )}
+  </div>
+);
 
 const Navbar = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const location = useLocation();
   const navigate = useNavigate();
   const storedUser = localStorage.getItem('user');
   const user = storedUser ? JSON.parse(storedUser) : null;
@@ -18,7 +54,7 @@ const Navbar = () => {
     navigate('/login');
   };
 
-  const handleSaveSuccess = (updatedUser) => {
+  const handleSaveSuccess = () => {
     // The location hook will not automatically trigger a re-render if the path doesn't change.
     // By keeping user state strictly from localStorage inside the render cycle, it updates.
     // However, to force a refresh of the navbar, we can trigger a re-render or rely on the parent.
@@ -26,43 +62,6 @@ const Navbar = () => {
     // forces a re-render of Navbar.
     setIsEditModalOpen(false);
   };
-
-  const UserDropdown = () => (
-    <div className="relative">
-      <button 
-        onClick={() => setIsProfileOpen(!isProfileOpen)} 
-        className="flex items-center gap-1.5 bg-nature-50 border border-nature-200 px-3 py-1.5 rounded-full text-nature-700 hover:bg-nature-100 transition-colors shadow-sm"
-      >
-        <UserIcon className="w-4 h-4" />
-        <span className="text-xs font-bold hidden sm:block">{user.name.split(' ')[0]}</span>
-        <span className="text-xs font-bold sm:hidden">Profile</span>
-        <ChevronDown className={`w-3 h-3 transition-transform ${isProfileOpen ? 'rotate-180' : ''}`} />
-      </button>
-      
-      {isProfileOpen && (
-          <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg py-1 border border-gray-100 z-50 animate-in fade-in zoom-in duration-200 origin-top-right">
-              <div className="px-4 py-2 border-b border-gray-50">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
-                  <p className="text-xs text-gray-500 capitalize">{user.role}</p>
-              </div>
-              <button 
-                  onClick={() => { setIsEditModalOpen(true); setIsProfileOpen(false); }}
-                  className="w-full text-left px-4 py-2 text-sm flex items-center gap-2 text-gray-700 hover:bg-nature-50 hover:text-nature-700 transition-colors"
-              >
-                  <Settings className="w-4 h-4" />
-                  Edit Profile
-              </button>
-              <button 
-                  onClick={handleLogout}
-                  className="w-full text-left px-4 py-2 text-sm flex items-center gap-2 text-red-600 hover:bg-red-50 transition-colors"
-              >
-                  <LogOut className="w-4 h-4" />
-                  Logout
-              </button>
-          </div>
-      )}
-    </div>
-  );
 
   return (
     <>
@@ -87,14 +86,26 @@ const Navbar = () => {
                         <Link to="/login" className="bg-nature-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-nature-700 transition-colors shadow-sm hover:shadow-md">Login</Link>
                     </>
                 ) : (
-                    <UserDropdown />
+                    <UserDropdown 
+                      isProfileOpen={isProfileOpen} 
+                      setIsProfileOpen={setIsProfileOpen} 
+                      user={user} 
+                      setIsEditModalOpen={setIsEditModalOpen} 
+                      handleLogout={handleLogout} 
+                    />
                 )}
               </div>
             </div>
 
             <div className="md:hidden flex items-center">
               {user ? (
-                <UserDropdown />
+                <UserDropdown 
+                  isProfileOpen={isProfileOpen} 
+                  setIsProfileOpen={setIsProfileOpen} 
+                  user={user} 
+                  setIsEditModalOpen={setIsEditModalOpen} 
+                  handleLogout={handleLogout} 
+                />
               ) : (
                 <Link to="/login" className="flex items-center gap-1.5 bg-nature-50 border border-nature-200 px-3 py-1.5 rounded-full text-nature-700 hover:bg-nature-100 transition-colors shadow-sm">
                   <UserIcon className="w-4 h-4" />

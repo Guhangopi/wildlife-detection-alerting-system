@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { MapPin, Clock, AlertTriangle, ShieldAlert, AlertOctagon, Flame, Edit2, Trash2, X, Check, Volume2, VolumeX } from 'lucide-react';
 import CampusMap from './CampusMap';
 
@@ -160,6 +160,30 @@ const HotZonesWidget = ({ hotzones }) => {
     );
 };
 
+const speakAlert = (alert) => {
+    console.log("DEBUG: Attempting to speak alert:", alert.id);
+    
+    // On mobile, the speech engine can get 'stuck'. Resume is needed.
+    if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+    }
+
+    const timeStr = new Date(alert.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const message = `Attention! ${alert.species || 'Animal'} detected at ${alert.location} at ${timeStr}. ${alert.description}`;
+    const utterance = new SpeechSynthesisUtterance(message);
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+
+    // Optional: select a voice (mobile browsers often have specific ones)
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length > 0) {
+        utterance.voice = voices.find(v => v.lang.includes('en')) || voices[0];
+    }
+
+    window.speechSynthesis.speak(utterance);
+};
+
 const AlertFeed = () => {
     const [alerts, setAlerts] = useState([]);
     const [hotzones, setHotzones] = useState([]);
@@ -167,7 +191,6 @@ const AlertFeed = () => {
     const [isVoiceEnabled, setIsVoiceEnabled] = useState(() => {
         return localStorage.getItem('voiceAlerts') === 'true';
     });
-    const [lastAlertId, setLastAlertId] = useState(null);
     const lastSpokenIdRef = useRef(localStorage.getItem('lastSpokenId'));
     const lastSpeakTimeRef = useRef(0);
     
@@ -176,13 +199,7 @@ const AlertFeed = () => {
     const user = storedUser ? JSON.parse(storedUser) : null;
     const isAdmin = user && user.role === 'admin';
 
-    useEffect(() => {
-        fetchData();
-        const interval = setInterval(fetchData, 5000); // Fast poll for real-time mobile feel
-        return () => clearInterval(interval);
-    }, []);
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         try {
             const [alertsRes, hotzonesRes] = await Promise.all([
                 fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/alerts`),
@@ -213,10 +230,6 @@ const AlertFeed = () => {
                         lastSpeakTimeRef.current = now;
                         speakAlert(latest);
                     }
-                    
-                    setLastAlertId(latest.id);
-                } else {
-                    setLastAlertId(0);
                 }
                 
                 setAlerts(newAlerts);
@@ -227,31 +240,13 @@ const AlertFeed = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [isVoiceEnabled]);
 
-    const speakAlert = (alert) => {
-        console.log("DEBUG: Attempting to speak alert:", alert.id);
-        
-        // On mobile, the speech engine can get 'stuck'. Resume is needed.
-        if (window.speechSynthesis.paused) {
-            window.speechSynthesis.resume();
-        }
-
-        const timeStr = new Date(alert.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const message = `Attention! ${alert.species || 'Animal'} detected at ${alert.location} at ${timeStr}. ${alert.description}`;
-        const utterance = new SpeechSynthesisUtterance(message);
-        utterance.rate = 0.9;
-        utterance.pitch = 1;
-        utterance.volume = 1;
-
-        // Optional: select a voice (mobile browsers often have specific ones)
-        const voices = window.speechSynthesis.getVoices();
-        if (voices.length > 0) {
-            utterance.voice = voices.find(v => v.lang.includes('en')) || voices[0];
-        }
-
-        window.speechSynthesis.speak(utterance);
-    };
+    useEffect(() => {
+        fetchData();
+        const interval = setInterval(fetchData, 5000); // Fast poll for real-time mobile feel
+        return () => clearInterval(interval);
+    }, [fetchData]);
 
     const toggleVoice = () => {
         if (!isVoiceEnabled) {

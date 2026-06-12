@@ -34,6 +34,7 @@ const EditProfileModal = ({ isOpen, onClose, user, onSaveSuccess }) => {
         setError(data.error || 'Failed to update profile');
       }
     } catch (err) {
+      console.error("Error updating profile:", err);
       setError('Connection error. Please try again later.');
     } finally {
       setLoading(false);

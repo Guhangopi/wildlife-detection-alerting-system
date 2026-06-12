@@ -49,7 +49,7 @@ const GlobalNotification = () => {
                         }
                     }
                 }
-            } catch (e) {
+            } catch {
                 // Silently handle polling errors to avoid console spam if offline
             }
         }, 5000);
