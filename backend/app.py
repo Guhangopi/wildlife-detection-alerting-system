@@ -306,13 +306,17 @@ def handle_iot_alert():
                 img_bytes = base64.b64decode(image_data)
                 files = {'photo': ('alert.jpg', img_bytes, 'image/jpeg')}
                 data = {'chat_id': TELEGRAM_CHAT_ID, 'caption': message_body}
-                req.post(url, data=data, files=files)
+                response = req.post(url, data=data, files=files)
             else:
                 url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-                req.post(url, json={'chat_id': TELEGRAM_CHAT_ID, 'text': message_body})
-            print(f"✅ Telegram Alert Sent with Image payload!")
+                response = req.post(url, json={'chat_id': TELEGRAM_CHAT_ID, 'text': message_body})
+            
+            if response.status_code == 200:
+                print(f"✅ Telegram Alert Sent successfully!")
+            else:
+                print(f"❌ Failed to send Telegram Alert. Status: {response.status_code}, Response: {response.text}")
         except Exception as e:
-            print(f"❌ Failed to send Telegram Alert: {e}")
+            print(f"❌ Failed to send Telegram Alert (Exception): {e}")
     else:
         print(f"⚠️ TELEGRAM CREDENTIALS NOT SET! To enable, set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID")
         

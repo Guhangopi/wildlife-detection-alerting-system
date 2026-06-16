@@ -176,13 +176,43 @@ def capture_and_send():
     else:
         print("--> Expert Model NOT FOUND. Using standard mode only.")
     
-    if os.name == 'nt':
-        cap = cv2.VideoCapture(CAMERA_ID, cv2.CAP_DSHOW)
-    else:
-        cap = cv2.VideoCapture(CAMERA_ID)
+    # Scan camera indices 0-5 to find an active physical webcam robustly
+    cap = None
+    webcam_found = False
     
-    if not cap.isOpened():
-        print("Error: Could not open webcam.")
+    # We will try default backend, then DSHOW, then MSMF for each index
+    for idx in [0, 1, 2, 3, 4, 5]:
+        print(f"Checking webcam index {idx}...")
+        for backend_name, backend_flag in [("Default", None), ("DSHOW", cv2.CAP_DSHOW), ("MSMF", cv2.CAP_MSMF)]:
+            try:
+                if backend_flag is None:
+                    test_cap = cv2.VideoCapture(idx)
+                else:
+                    test_cap = cv2.VideoCapture(idx, backend_flag)
+                    
+                if test_cap.isOpened():
+                    # Read a frame to verify it works (sometimes isOpened() is True but read() fails)
+                    ret, test_frame = test_cap.read()
+                    if ret and test_frame is not None:
+                        cap = test_cap
+                        webcam_found = True
+                        print(f"--> SUCCESS: Connected to webcam index {idx} using {backend_name} backend!")
+                        break
+                    else:
+                        test_cap.release()
+            except Exception:
+                pass
+        if webcam_found:
+            break
+            
+    if not cap or not cap.isOpened():
+        print("\n==================================================================")
+        print("ERROR: Could not open any physical webcam (checked indices 0-5).")
+        print("Please check the following:")
+        print("1. Is your webcam physically plugged in and turned on?")
+        print("2. Is another program using the camera (e.g. Zoom, Teams, Chrome, OBS)?")
+        print("3. Check Windows Privacy Settings: 'Allow desktop apps to access your camera' must be enabled.")
+        print("==================================================================\n")
         return
         
     # Start the background AI Thread with BOTH models
